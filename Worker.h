@@ -7,15 +7,15 @@
 enum class H
 {
     LEFT = 520,
-    RIGHT   ,
-    CENTER  ,
+    RIGHT     ,
+    CENTER    ,
     NONE
 };
 
 enum class K
 {
     LEFT = 1314,
-    CENTER   ,
+    CENTER     ,
     DEFAULT
 };
 

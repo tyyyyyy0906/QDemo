@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QThread>
+#include <QFont>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Widget; }
@@ -13,11 +14,18 @@ class Widget : public QWidget
 {
     Q_OBJECT
     QThread workerThread;
+
+    Q_PROPERTY(QFont   font MEMBER m_font NOTIFY fontChanged);
+    Q_PROPERTY(QString name MEMBER m_name NOTIFY nameChanged);
+
 public:
     Widget(QWidget *parent = nullptr);
     ~Widget();
 
     void itemInit();
+public:
+    QFont m_font;
+    QString m_name;
 
 public slots:
     void onButtonClicked(void);
@@ -28,6 +36,8 @@ public slots:
 
 signals:
     void startWorker();
+    void fontChanged();
+    void nameChanged();
 
 private:
     Ui::Widget *ui;

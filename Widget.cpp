@@ -54,7 +54,17 @@ protected:
         /*
             说明：因为signal/slot依赖Q_OBJECT宏，而Q_OBJECT宏依赖于QT的元编译器即moc编译器,
             但是QT的moc编译器只会默认查找.h文件中的Q_OBJECT宏而不会去查找.cpp文件中的Q_OBJECT宏。
-            如果想要在cpp中引入Q_OBJECT宏必须要引入moc文件（一定是放在文件末尾）告诉moc编译器引用了Q_OBJECT。
+            如果想要在cpp中引入Q_OBJECT宏必须要引入moc文件（一定是放在使用处末尾）告诉moc编译器引用了Q_OBJECT。
+
+            QT编译流程：
+            1、QT将源码交与C++标准编译器预编译之前会由moc对C++源文件进行分析。
+            2、如果.h文件中包含了Q_OBJECT宏则QT会自动生成一个包含Q_OBJECT实现的源代码C++文件即moc_xxx.cpp。
+            3、将生成的moc_xxx.cpp文件加入C++标准编译器中参与编译。
+
+            这样的一个编译流程从而导致QT的编译速度超级慢^_^(原本C++编译速度已经很慢了)。
+
+            #: Notic: moc只会对.h文件中是否存在Q_OBJECT宏进行分析，并不会对.cpp文件分析,如果在.cpp
+                      文件中引入了Q_OBJECT宏需要手动引入对应的moc文件即: xxx.moc,否则将报错。
 
             emit sendStartResult();  ERROR
         */
@@ -124,6 +134,10 @@ Widget::Widget(QWidget *parent)
     connect(&workerThread, &QThread::finished,           work, &QObject::deleteLater);
 
     connect(ui->pushButton, SIGNAL(clicked()), basic, SIGNAL(transMit()));
+    connect(this, &Widget::nameChanged, this, [this]()
+    {
+        qDebug() << "current m_name has be changed = " << m_name;
+    });
 }
 
 Widget::~Widget()
@@ -148,6 +162,7 @@ void Widget::onButtonClicked()
     ui->pushButton->setText(QString("等待接收中..."));
     ui->pushButton->setEnabled(false);
     p_->start();
+    m_name = "tianyuan";
     qDebug() << "Main Proccess Thread ID = " << QThread::currentThreadId();
 }
 
@@ -162,6 +177,7 @@ void Widget::reciverFromNewThread()
 {
     ui->pushButton->setText(QString("哇哦，已经接收到新线程完成的信息了^-^"));
     ui->pushButton->setEnabled(true);
+    m_name = "hejianping";
 }
 
 void Widget::reciverWorkThreadFinished()
