@@ -1,4 +1,4 @@
-QT       += core gui
+QT       += core gui concurrent
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -18,11 +18,15 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
     Worker.cpp \
     main.cpp \
-    Widget.cpp
+    Widget.cpp \
+    TaskPool.cpp \
+    Concurrent.cpp
 
 HEADERS += \
     Widget.h \
-    Worker.h
+    Worker.h \
+    TaskPool.h \
+    Concurrent.h
 
 FORMS += \
     Widget.ui

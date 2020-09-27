@@ -5,9 +5,15 @@
 #include <QObject>
 
 #include <QPushButton>
+#include <QMutex>
+#include <QMutexLocker>
+#include <QThreadPool>
+#include <QtConcurrent>
+#include <QFuture>
 
 #include "Widget.h"
 #include "Worker.h"
+#include "TaskPool.h"
 #include "ui_Widget.h"
 
 // C++ Stardand Libaray
@@ -16,6 +22,14 @@
 #include <stdlib.h>
 
 #define RANDOM(x) rand()%(x)
+
+class Transfer
+{
+public:
+    Widget* this_ = Q_NULLPTR;
+
+    QMutex mutex_;
+};
 
 // QThread 第一种使用方法（重写run方法）
 class Reciver final : public QThread
@@ -63,8 +77,8 @@ protected:
 
             这样的一个编译流程从而导致QT的编译速度超级慢^_^(原本C++编译速度已经很慢了)。
 
-            #: Notic: moc只会对.h文件中是否存在Q_OBJECT宏进行分析，并不会对.cpp文件分析,如果在.cpp
-                      文件中引入了Q_OBJECT宏需要手动引入对应的moc文件即: xxx.moc,否则将报错。
+            #: Notice: moc只会对.h文件中是否存在Q_OBJECT宏进行分析，并不会对.cpp文件分析,如果在.cpp
+                       文件中引入了Q_OBJECT宏需要手动引入对应的moc文件即: xxx.moc,否则将报错。
 
             emit sendStartResult();  ERROR
         */
@@ -86,9 +100,11 @@ public:
     {
         v_ = {};
     }
+    QMutex m_;
 public slots:
     void doWork()
     {
+        QMutexLocker lock(&m_);
         qDebug() << "Worker Thread ID = " << QThread::currentThreadId();
         srand((int)time(0));
         for (int i = 0; i < 10; ++i)
@@ -116,8 +132,12 @@ Widget::Widget(QWidget *parent)
       : QWidget(parent)
       , ui(new Ui::Widget)
       , p_(new Reciver)
+      , workerThread(new QThread)
+      , tran_(new Transfer)
 {
     ui->setupUi(this);
+
+    tran_->this_ = this;
 
     itemInit();
 
@@ -128,16 +148,19 @@ Widget::Widget(QWidget *parent)
     Worker* work  = new Worker();
     Basic * basic = new Basic();
 
-    work->moveToThread(&workerThread);
+    work->moveToThread(workerThread);
     connect(this,          SIGNAL(startWorker()),        work, SLOT(doWork()));
     connect(work,          SIGNAL(threadWorkFinished()), this, SLOT(reciverWorkThreadFinished()), Qt::QueuedConnection);
-    connect(&workerThread, &QThread::finished,           work, &QObject::deleteLater);
+    connect(workerThread,  &QThread::finished,           work, &QObject::deleteLater);
 
     connect(ui->pushButton, SIGNAL(clicked()), basic, SIGNAL(transMit()));
     connect(this, &Widget::nameChanged, this, [this]()
     {
         qDebug() << "current m_name has be changed = " << m_name;
     });
+
+    connect(ui->pushButton_3, SIGNAL(clicked(void)), this, SLOT(startTaskTool(void)));
+    connect(ui->pushButton_4, SIGNAL(clicked(void)), this, SLOT(startConcurrent(void)));
 }
 
 Widget::~Widget()
@@ -145,16 +168,20 @@ Widget::~Widget()
     delete ui;
     delete p_;
 
-    workerThread.wait();
-    workerThread.quit();
+    workerThread->wait();
+    workerThread->quit();
 }
 
 void Widget::itemInit()
 {
     ui->pushButton->setFont(QFont("微软雅黑"));
+    ui->pushButton_2->setFont(QFont("微软雅黑"));
+    ui->pushButton_3->setFont(QFont("微软雅黑"));
+    ui->pushButton_4->setFont(QFont("微软雅黑"));
     ui->pushButton->setText(QString("开始"));
     ui->pushButton_2->setText(QString("开启Work线程"));
-    ui->pushButton_2->setFont(QFont("微软雅黑"));
+    ui->pushButton_3->setText(QString("开启任务池"));
+    ui->pushButton_4->setText(QString("QtConcurrent高级用法"));
 }
 
 void Widget::onButtonClicked()
@@ -162,7 +189,7 @@ void Widget::onButtonClicked()
     ui->pushButton->setText(QString("等待接收中..."));
     ui->pushButton->setEnabled(false);
     p_->start();
-    m_name = "tianyuan";
+    m_name = "QThread";
     qDebug() << "Main Proccess Thread ID = " << QThread::currentThreadId();
 }
 
@@ -177,7 +204,7 @@ void Widget::reciverFromNewThread()
 {
     ui->pushButton->setText(QString("哇哦，已经接收到新线程完成的信息了^-^"));
     ui->pushButton->setEnabled(true);
-    m_name = "hejianping";
+    m_name = "QThread";
 }
 
 void Widget::reciverWorkThreadFinished()
@@ -185,3 +212,34 @@ void Widget::reciverWorkThreadFinished()
     ui->pushButton_2->setText(QString("哇哦，已经接收到Worker线程完成的信息了^-^"));
     ui->pushButton_2->setEnabled(true);
 }
+
+void Widget::startTaskTool()
+{
+    QThreadPool taskPool;
+    taskPool.setMaxThreadCount(5);
+    for (int i = 0; i < 5; i++)
+    {
+        taskPool.start(new TaskPool());
+        QThread::sleep(1);
+    }
+}
+
+QString Widget::conResult(const QString& value)
+{
+    qDebug("current function thread id = %#x", QThread::currentThreadId());
+    return QString("Hello %1").arg(value);
+}
+
+void Widget::startConcurrent()
+{
+    qDebug() << "start Concurrent" << QThread::currentThreadId();
+    QFuture<void> f_ = QtConcurrent::run([=]()
+    {
+        qDebug() << "current thread = " << QThread::currentThreadId();
+    });
+    QFuture<QString> future = QtConcurrent::run(this, &Widget::conResult, QString("Qt6"));
+    future.waitForFinished();
+    qDebug() << "get result = " << future.result();
+}
+
+
