@@ -21,6 +21,7 @@
 // C Stardand Libaray
 #include <stdlib.h>
 
+#define UNUSERED(x) (void)x
 #define RANDOM(x) rand()%(x)
 
 class Transfer
@@ -230,6 +231,10 @@ QString Widget::conResult(const QString& value)
     return QString("Hello %1").arg(value);
 }
 
+//!
+//! \brief Widget::startConcurrent
+//! \desic QtConcurrent是一个命名空间，提供了一些高级的 API，使得在编写多线程的时候，无需使用低级线程原语，如读写锁，等待条件或信号
+//!
 void Widget::startConcurrent()
 {
     qDebug() << "start Concurrent" << QThread::currentThreadId();
@@ -237,6 +242,7 @@ void Widget::startConcurrent()
     {
         qDebug() << "current thread = " << QThread::currentThreadId();
     });
+    UNUSERED(f_);
     QFuture<QString> future = QtConcurrent::run(this, &Widget::conResult, QString("Qt6"));
     future.waitForFinished();
     qDebug() << "get result = " << future.result();
