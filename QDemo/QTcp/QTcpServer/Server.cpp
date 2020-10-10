@@ -101,9 +101,9 @@ void Server::onServerSendMsgData()
 bool Server::eventFilter(QObject *watched, QEvent *event)
 {
     quint32    type_ = static_cast<quint32>(event->type());
-    QKeyEvent *keys_ = static_case<QKeyEvent*>(event);
+    QKeyEvent *keys_ = static_cast<QKeyEvent*>(event);
 
-    if (type_ == QEvent::KeyPress && key_->key() == Qt::Key_Return)
+    if (type_ == QEvent::KeyPress && keys_->key() == Qt::Key_Return)
     {
         if (watched == ui->server_sendmsg_edit)
         {
